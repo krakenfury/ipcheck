@@ -1,0 +1,61 @@
+#!/bin/bash
+
+### ipcheck
+
+### Description: 
+
+# Obtains the public IP of router and emails if it changes
+
+### Overview:
+
+# get public IP address with curl
+# write it to "new_ip"
+# diff it to "current_ip"
+# if it's different, email the new IP address to me
+# if it's different, write it to the "current_ip" file
+# exit the script if the curl command doesn't finish in 165 seconds 
+
+############################################################################################
+
+### Variables
+
+CURRENT_IP=`cat /path/to/ipcheck/currentip`
+NEW_IP=`curl -s --connect-timeout 165 http://checkip.dyndns.org | sed -e 's/.*Current IP Address: //' -e 's/<.*$//'`
+STRING="Files /path/to/ipcheck/newip and /path/to/ipcheck/currentip are identical"
+
+## Alternative curl options:
+# NEW_IP=`curl -s --connect-timeout 165 ipv4.icanhazip.com`
+
+## Check NEW_IP, if it's empty, FO and better luck next time.
+
+if [ "$NEW_IP" = "" ]; then
+
+	exit 1
+
+else
+
+## Write $NEW_IP to /path/to/ipcheck/newip
+
+	echo "$NEW_IP" > /path/to/ipcheck/newip
+
+# Compare it to current IP address and exit if identical
+
+	if [ "`diff -s /path/to/ipcheck/newip /path/to/ipcheck/currentip`" == "$STRING" ]; then
+
+		exit 1
+
+# If different, email me the new IP address
+
+	else 
+
+		echo "$NEW_IP" | mailx -s "New router public IP" <email>
+
+# ...and write it to "current_ip"
+
+		echo "$NEW_IP" > /path/to/ipcheck/currentip
+
+	fi
+
+fi
+
+exit 1
