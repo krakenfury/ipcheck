@@ -1,0 +1,67 @@
+#! /bin/bash
+
+
+source /bin/virtualenvwrapper.sh
+workon <yourVirtualenv>
+
+
+awsIp=`aws route53 list-resource-record-sets --hosted-zone-id <zoneId> --query \
+        "ResourceRecordSets[?Type == 'A']" | grep Value | sed -e 's/.*"Value": "//' -e 's/"//'`
+pubIp=`curl -s --connect-timeout 165 http://checkip.dyndns.org | sed -e 's/.*Current IP Address: //' \
+        -e 's/<.*$//'`
+tmpJson=`mktemp`
+
+
+if [ "$pubIp" == "" ]; 
+
+
+then
+
+
+        exit 1
+
+fi
+
+
+if 	[ $awsIp != $pubIp ];
+
+
+then
+
+
+`cat << EOT > $tmpJson
+{
+ "Comment": "Changing DNS record",
+ "Changes": [
+   {
+     "Action": "UPSERT",
+     "ResourceRecordSet": {
+     "Name": "<your.domain>.",
+     "Type": "A",
+     "TTL": 300,
+     "ResourceRecords": [
+       {
+         "Value": "$pubIp"
+       }
+     ]
+   }
+  }
+ ]
+}
+EOT`
+
+
+	aws route53 change-resource-record-sets --hosted-zone-id <zoneId> --change-batch \
+	file://$tmpJson
+
+
+else
+
+
+	echo "no change"
+
+
+fi
+
+
+trap 'test -e $tmpJson && rm $tmpJson' INT TERM EXIT
